@@ -6,6 +6,14 @@ $(document).ready( function() {
 		var tags = $(this).find("input[name='tags']").val();
 		getUnanswered(tags);
 	});
+	
+	$('.inspiration-getter').submit( function(event){
+		// zero out results if previous search has run
+		$('.results').html('');
+		// get the value of the tags the user submitted
+		var tag = $(this).find("input[name='answerers']").val();
+		getTopAnswers(tag);
+	});
 });
 
 // this function takes the question object returned by StackOverflow 
@@ -32,12 +40,37 @@ var showQuestion = function(question) {
 	// set some properties related to asker
 	var asker = result.find('.asker');
 	asker.html('<p>Name: <a target="_blank" href=http://stackoverflow.com/users/' + question.owner.user_id + ' >' +
-													question.owner.display_name +
-												'</a>' +
-							'</p>' +
- 							'<p>Reputation: ' + question.owner.reputation + '</p>'
+		question.owner.display_name + '</a>' + '</p>' + '<p>Reputation: ' + question.owner.reputation + '</p>'
 	);
 
+	return result;
+};
+
+// this function takes the answer object returned by StackOverflow 
+// and creates new result to be appended to DOM
+var showTopAnswers = function(answer) {
+	
+	// clone our result template code
+	var result = $('.templates .answer').clone();
+	
+	// Set the answer properties in result
+	var questionElem = result.find('.user a');
+	questionElem.attr('href', answer.user.link);
+	questionElem.text(answer.user.display_name);
+	
+
+	// set the accept-rate for answer property in result
+	var viewed = result.find('.accept-rate');
+	viewed.text(answer.user.accept_rate);
+	
+	// set the reputation for answer  property in result
+	var viewed = result.find('.reputation');
+	viewed.text(answer.user.reputation);
+	
+	// set the post-count for answer  property in result
+	var viewed = result.find('.post-count');
+	viewed.text(answer.post_count);
+	
 	return result;
 };
 
@@ -61,10 +94,7 @@ var showError = function(error){
 var getUnanswered = function(tags) {
 	
 	// the parameters we need to pass in our request to StackOverflow's API
-	var request = {tagged: tags,
-								site: 'stackoverflow',
-								order: 'desc',
-								sort: 'creation'};
+	var request = {tagged: tags, site: 'stackoverflow', order: 'desc', sort: 'creation'};
 	
 	var result = $.ajax({
 		url: "http://api.stackexchange.com/2.2/questions/unanswered",
@@ -88,5 +118,31 @@ var getUnanswered = function(tags) {
 	});
 };
 
+// takes a tag to be searched for on StackOverflow
+var getTopAnswers = function(tag) {
+	
+	// the parameters we need to pass in our request to StackOverflow's API
+	var request = {tag: tag, period: 'all_time'};
+	var result = $.ajax({
+		url: "http://api.stackexchange.com/2.2/tags/" + tag + "/top-answerers/all_time?site=stackoverflow",
+		data: request,
+		dataType: "jsonp",
+		type: "GET",
+		})
+	.done(function(result){
+		var searchResults = showSearchResults(request.tag, result.items.length);
+		
+		$('.search-results').html(searchResults);
+
+		$.each(result.items, function(i, item) {
+			var answers = showTopAnswers(item);
+			$('.results').append(answers);
+		});
+	})
+	.fail(function(jqXHR, error, errorThrown){
+		var errorElem = showError(error);
+		$('.search-results').append(errorElem);
+	});
+};
 
 
